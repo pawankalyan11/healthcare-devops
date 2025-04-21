@@ -1,20 +1,62 @@
-- name : Configure Docker on EC2 Instances
-  hosts : all
+- name: Configure Docker on EC2 Instances
+  hosts: all
   become: true
-  connection : ssh
-  tasks : 
-  - name: updating apt
-    command : sudo apt-get update
+  connection: ssh
 
-  - name : Install Docker
-    command : sudo apt-get install -y docker.io
-    become : yes
-    become_user : root
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
 
-  - name : Start Docker Service
-    command : sudo systemctl start docker
-    become : yes
-    become_user : root
+    - name: Remove conflicting containerd package
+      apt:
+        name: containerd
+        state: absent
+        force: yes
+        purge: yes
 
-  - name: Deploy Docker Container
-    command: docker run -itd -p 8086:8082 pawankalyan29/healthcareappdemo:v1
+    - name: Install Docker dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - apt-transport-https
+        - ca-certificates
+        - curl
+        - software-properties-common
+        - gnupg
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker APT repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable
+        state: present
+        filename: docker
+
+    - name: Update apt cache after adding Docker repo
+      apt:
+        update_cache: yes
+
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        state: latest
+
+    - name: Start Docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Deploy Docker Container
+      docker_container:
+        name: healthcareappdemo
+        image: pawankalyan29/healthcareappdemo:v1
+        state: started
+        restart_policy: always
+        published_ports:
+          - "8086:8082"
