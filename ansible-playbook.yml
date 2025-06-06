@@ -55,7 +55,7 @@
     - name: Deploy Docker Container
       docker_container:
         name: healthcareappdemo
-        image: pawankalyan29/healthcareappdemo:v1
+        image: pawankalyan29/project:v1
         state: started
         restart_policy: always
         published_ports:
